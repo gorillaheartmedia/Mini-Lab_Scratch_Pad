@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>YouDJ Ultra — Smooth Scratch + Record Toggle to WAV</title>
+<title>Mini Lab Scratch Pad</title>
 <style>
   :root{--bg:#0b1220;--panel:#0f1934;--rim:#1c2b59;--accent:#5cc8ff;--fg:#eaf3ff;--muted:#93a6c9;--ok:#4dff9b;--hi:#14e1ff;--red:#ff445a;}
   *{box-sizing:border-box}
@@ -42,7 +42,7 @@
 </head>
 <body>
 <header>
-  <h1>YouDJ Ultra <span class="badge">Smooth Rate Scratch • Inertia • XFader • Hamster • Transform • EQ/LPF • Crackle • Brake • <b>Record Toggle</b></span></h1>
+  <h1>Mini-Lab Scratch  <span class="badge">Smooth Rate Scratch • Inertia • XFader • Hamster • Transform • EQ/LPF • Crackle • Brake • <b>Record Toggle</b></span></h1>
 </header>
 
 <div class="wrap">
@@ -490,7 +490,7 @@
     if (!wavURL) return;
     const a=document.createElement('a');
     const ts = new Date().toISOString().replace(/[:.]/g,'-');
-    a.href = wavURL; a.download = `YouDJ-Bounce-${ts}.wav`;
+    a.href = wavURL; a.download = `ScratchPad-Bounce-${ts}.wav`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
