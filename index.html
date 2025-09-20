@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>YouDJ Ultra — Smooth Scratch + Record Toggle to WAV</title>
+<style>
+  :root{--bg:#0b1220;--panel:#0f1934;--rim:#1c2b59;--accent:#5cc8ff;--fg:#eaf3ff;--muted:#93a6c9;--ok:#4dff9b;--hi:#14e1ff;--red:#ff445a;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 800px at 65% -10%, #173066 0%, #0e1838 45%, var(--bg) 70%) fixed;color:var(--fg);min-height:100svh;display:flex;flex-direction:column}
+  header{padding:14px 18px;border-bottom:1px solid #132659;background:linear-gradient(180deg,#102048,#0b1220)}
+  h1{font-size:18px;margin:0}
+  .badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#0d1b36;border:1px solid #22407b;font-size:11px;color:#bfe2ff}
+  .wrap{padding:16px}
+  .mixer{display:grid;gap:16px;grid-template-columns:1fr min(520px,30%) 1fr;align-items:stretch}
+  .deck,.center{background:radial-gradient(120% 140% at 50% -10%, #132659 0%, #0e1730 40%, #0b1220 70%);border:1px solid #162b57;border-radius:16px;padding:14px;box-shadow:0 10px 30px #0008, inset 0 0 0 1px #0004}
+  .deck h2{margin:0 0 8px;color:#cfe0ff;font-size:15px;letter-spacing:.4px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input[type="file"]{max-width:280px;color:var(--muted)}
+  button{background:#0f1d3d;border:1px solid #24427e;color:var(--fg);padding:7px 10px;border-radius:10px;cursor:pointer;font-weight:600;box-shadow:inset 0 0 0 1px #0006}
+  button:active{transform:translateY(1px)}
+  .btn{font-size:12px;padding:6px 9px}
+  label{font-size:12px;color:#cfe0ff}
+  .pill{background:#0f1d3d;border:1px solid #1f3568;border-radius:12px;padding:6px 10px;color:#cfe0ff;font-size:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .col{display:flex;flex-direction:column;gap:6px}
+  input[type="range"]{accent-color:var(--accent);width:100%}
+  .wheel{margin:12px auto;width:300px;aspect-ratio:1;border-radius:999px;position:relative;overflow:hidden;user-select:none;touch-action:none;background:
+      radial-gradient(circle at 50% 50%, #0b1220 0 38%, transparent 38%),
+      conic-gradient(from 0deg,#1f2f62 0 10deg,#0f1c3e 10deg 20deg,#1f2f62 20deg 30deg,#0f1c3e 30deg 40deg,#1f2f62 40deg 50deg,#0f1c3e 50deg 60deg,#1f2f62 60deg 70deg,#0f1c3e 70deg 80deg,#1f2f62 80deg 90deg,#0f1c3e 90deg 100deg,#1f2f62 100deg 110deg,#0f1c3e 110deg 120deg,#1f2f62 120deg 130deg,#0f1c3e 130deg 140deg,#1f2f62 140deg 150deg,#0f1c3e 150deg 160deg,#1f2f62 160deg 170deg,#0f1c3e 170deg 180deg,#1f2f62 180deg 190deg,#0f1c3e 190deg 200deg,#1f2f62 200deg 210deg,#0f1c3e 210deg 220deg,#1f2f62 220deg 230deg,#0f1c3e 230deg 240deg,#1f2f62 240deg 250deg,#0f1c3e 250deg 260deg,#1f2f62 260deg 270deg,#0f1c3e 270deg 280deg,#1f2f62 280deg 290deg,#0f1c3e 290deg 300deg,#1f2f62 300deg 310deg,#0f1c3e 310deg 320deg,#1f2f62 320deg 330deg,#0f1c3e 330deg 340deg,#1f2f62 340deg 350deg,#0f1c3e 350deg 360deg);border:1px solid #243a76;box-shadow: inset 0 0 40px #000a, 0 0 0 4px #0b1220, 0 10px 25px #000a}
+  .wheel .label{position:absolute;inset:auto 0 12px 0;text-align:center;font-size:12px;color:#d6e6ff}
+  .meters{display:flex;gap:8px;margin-top:10px}
+  .meter{flex:1;height:10px;background:#08132b;border-radius:8px;overflow:hidden;border:1px solid #162b57}
+  .bar{height:100%;width:8%;background:linear-gradient(90deg,var(--hi),var(--ok));transition:width .08s linear}
+  .xfader{background:#0f1d3d;border:1px solid #1b2f62;border-radius:12px;padding:12px;box-shadow:inset 0 0 0 1px #0006}
+  .flex{display:flex;gap:10px;align-items:center}
+  .grow{flex:1}
+  /* Record button states */
+  .rec-on{background:#19090d;border-color:#7b2231;color:#ffdfe4;box-shadow:0 0 0 1px #0006 inset}
+  .rec-dot{display:inline-block;width:.6em;height:.6em;border-radius:999px;background:var(--red);margin-right:.4em;transform:translateY(1px)}
+</style>
+</head>
+<body>
+<header>
+  <h1>YouDJ Ultra <span class="badge">Smooth Rate Scratch • Inertia • XFader • Hamster • Transform • EQ/LPF • Crackle • Brake • <b>Record Toggle</b></span></h1>
+</header>
+
+<div class="wrap">
+  <div class="mixer">
+    <!-- DECK A -->
+    <section class="deck" id="deckA">
+      <h2>Deck A</h2>
+      <div class="row">
+        <input type="file" accept="audio/*" id="fileA">
+        <button class="btn" id="playA">▶ Play/Pause</button>
+        <button class="btn" id="cueA">⏮ Cue</button>
+        <button class="btn" id="brakeA">⟲ Brake</button>
+        <span class="pill" id="timeA">00:00 / 00:00</span>
+      </div>
+      <div class="wheel" id="wheelA"><div class="label">Hold + drag to scratch</div></div>
+      <div class="grid2">
+        <div class="col"><label>Volume</label><input type="range" min="0" max="1" step="0.01" value="1" id="volA"></div>
+        <div class="col"><label>Pitch / Motor</label><input type="range" min="0.5" max="1.5" step="0.001" value="1" id="rateA"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>Scratch Sensitivity</label><input type="range" min="0.0005" max="0.02" step="0.0005" value="0.007" id="sensA"></div>
+        <div class="col"><label>Release Inertia (s)</label><input type="range" min="0.05" max="1.8" step="0.05" value="0.7" id="inerA"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>Start Spin-up (s)</label><input type="range" min="0" max="2.5" step="0.05" value="0.4" id="spinA"></div>
+        <div class="col"><label>Brake Time (s)</label><input type="range" min="0.1" max="2.5" step="0.05" value="1.2" id="brakeTimeA"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>LPF Cutoff</label><input type="range" min="200" max="20000" step="10" value="20000" id="lpfA"></div>
+        <div class="col">
+          <label class="flex"><input type="checkbox" id="crackleA"> <span>Vinyl crackle</span></label>
+          <label class="flex" style="margin-left:12px"><input type="checkbox" id="eqA" checked> <span>Scratch EQ (Hi-pass)</span></label>
+        </div>
+      </div>
+      <div class="meters"><div class="meter"><div class="bar" id="meterA"></div></div></div>
+    </section>
+
+    <!-- CENTER -->
+    <section class="center">
+      <div class="xfader">
+        <div class="flex">
+          <label>Crossfader (A ⇄ B)</label><span class="grow"></span>
+          <label class="flex"><input type="checkbox" id="ham"> <span>Hamster</span></label>
+        </div>
+        <input type="range" min="-1" max="1" step="0.001" value="0" id="xfader">
+        <div class="flex" style="font-size:12px;color:#93a6c9"><span>Left (A)</span><span class="grow"></span><span>Right (B)</span></div>
+      </div>
+      <div class="xfader">
+        <label>Crossfader Curve (Cut ↔ Smooth)</label>
+        <input type="range" min="0" max="1" step="0.001" value="0.85" id="xcurve">
+      </div>
+      <div class="xfader">
+        <label>Transform (gate both decks)</label>
+        <div class="flex"><button class="btn" id="tapCut">Tap Cut</button><span style="font-size:12px;color:#93a6c9">Hold <b>C</b> to gate</span></div>
+      </div>
+
+      <div class="xfader">
+        <label>Recording</label>
+        <div class="flex">
+          <button class="btn" id="recBtn"><span class="rec-dot" aria-hidden="true"></span><span id="recBtnText">Record</span></button>
+          <button class="btn" id="dlBtn" disabled>Download WAV</button>
+          <span id="recStatus" class="tiny">idle</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DECK B -->
+    <section class="deck" id="deckB">
+      <h2>Deck B</h2>
+      <div class="row">
+        <input type="file" accept="audio/*" id="fileB">
+        <button class="btn" id="playB">▶ Play/Pause</button>
+        <button class="btn" id="cueB">⏮ Cue</button>
+        <button class="btn" id="brakeB">⟲ Brake</button>
+        <span class="pill" id="timeB">00:00 / 00:00</span>
+      </div>
+      <div class="wheel" id="wheelB"><div class="label">Hold + drag to scratch</div></div>
+      <div class="grid2">
+        <div class="col"><label>Volume</label><input type="range" min="0" max="1" step="0.01" value="1" id="volB"></div>
+        <div class="col"><label>Pitch / Motor</label><input type="range" min="0.5" max="1.5" step="0.001" value="1" id="rateB"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>Scratch Sensitivity</label><input type="range" min="0.0005" max="0.02" step="0.0005" value="0.007" id="sensB"></div>
+        <div class="col"><label>Release Inertia (s)</label><input type="range" min="0.05" max="1.8" step="0.05" value="0.7" id="inerB"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>Start Spin-up (s)</label><input type="range" min="0" max="2.5" step="0.05" value="0.4" id="spinB"></div>
+        <div class="col"><label>Brake Time (s)</label><input type="range" min="0.1" max="2.5" step="0.05" value="1.2" id="brakeTimeB"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="col"><label>LPF Cutoff</label><input type="range" min="200" max="20000" step="10" value="20000" id="lpfB"></div>
+        <div class="col">
+          <label class="flex"><input type="checkbox" id="crackleB"> <span>Vinyl crackle</span></label>
+          <label class="flex" style="margin-left:12px"><input type="checkbox" id="eqB" checked> <span>Scratch EQ (Hi-pass)</span></label>
+        </div>
+      </div>
+      <div class="meters"><div class="meter"><div class="bar" id="meterB"></div></div></div>
+    </section>
+  </div>
+</div>
+
+<footer>
+  Tip: hit Play once to unlock audio (browser policy). Toggle <b>Record</b> on → do your thing → toggle off → click <b>Download WAV</b>. It captures the post-crossfader stereo mix.
+</footer>
+
+<script>
+(async function(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+
+  /* -------------------- Worklets -------------------- */
+  const scratchWorklet = `
+  class ScratchProcessor extends AudioWorkletProcessor {
+    static get parameterDescriptors(){
+      return [
+        {name:'rate', defaultValue:0, minValue:-12, maxValue:12, automationRate:'k-rate'},
+        {name:'gate', defaultValue:1, minValue:0, maxValue:1, automationRate:'k-rate'}
+      ];
+    }
+    constructor(){
+      super();
+      this.channels=[]; this.numCh=0; this.length=0; this.sampleRateSrc=48000; this.head=0; this.postCtr=0;
+      this.port.onmessage = (e)=>{
+        const d=e.data||{};
+        if (d.type==='setBuffer'){
+          this.channels = d.channels.map(b=>new Float32Array(b));
+          this.numCh = this.channels.length;
+          this.length = d.length|0;
+          this.sampleRateSrc = d.sampleRate|0;
+          this.head = 0;
+        } else if (d.type==='setHead'){
+          const h=d.head|0; this.head=Math.max(0,Math.min(Math.max(0,this.length-2),h));
+        }
+      };
+    }
+    lerp(ch, idx){const i=idx|0, t=idx-i; const a=this.channels[ch][i]||0, b=this.channels[ch][i+1]||0; return a+(b-a)*t;}
+    process(inputs, outputs, parameters){
+      const out=outputs[0], frames=out[0].length, chs=out.length;
+      if (!this.length||!this.numCh){ for(let c=0;c<chs;c++) out[c].fill(0); return true; }
+      const rate=parameters.rate.length===1?parameters.rate[0]:parameters.rate;
+      const gate=parameters.gate.length===1?parameters.gate[0]:parameters.gate;
+      const step=(typeof rate==='number')?rate:0;
+      for(let i=0;i<frames;i++){
+        const idx=this.head;
+        const L=this.lerp(0,idx); const R=(this.numCh>1)?this.lerp(1,idx):L;
+        const g=(typeof gate==='number')?gate:gate[i];
+        if(out[0]) out[0][i]=L*g; if(out[1]) out[1][i]=R*g;
+        this.head+=step;
+        if(this.head<0)this.head=0; if(this.head>this.length-2)this.head=this.length-2;
+      }
+      this.postCtr+=frames;
+      if (this.postCtr>sampleRate/20){ this.port.postMessage({type:'head', head:this.head, sampleRate:this.sampleRateSrc}); this.postCtr=0; }
+      return true;
+    }
+  }
+  registerProcessor('scratch-processor', ScratchProcessor);`;
+
+  const recorderWorklet = `
+  class RecorderProcessor extends AudioWorkletProcessor{
+    constructor(){
+      super();
+      this.chunk = 8192;
+      this.buffL = new Float32Array(this.chunk);
+      this.buffR = new Float32Array(this.chunk);
+      this.pos = 0;
+      this.isRec = false;
+      this.port.onmessage = e=>{
+        const d=e.data||{};
+        if (d.type==='recStart'){ this.isRec=true; this.pos=0; }
+        if (d.type==='recStop'){
+          this.isRec=false;
+          if (this.pos>0){
+            this.port.postMessage({type:'data', left:this.buffL.buffer, right:this.buffR.buffer, valid:this.pos}, [this.buffL.buffer, this.buffR.buffer]);
+            this.buffL = new Float32Array(this.chunk);
+            this.buffR = new Float32Array(this.chunk);
+            this.pos=0;
+          }
+          this.port.postMessage({type:'recStopped'});
+        }
+      };
+    }
+    process(inputs, outputs){
+      const input = inputs[0] || [];
+      const L = input[0] || new Float32Array(128);
+      const R = input[1] || L;
+      // pass-through
+      const out = outputs[0] || [];
+      if (out[0]) out[0].set(L);
+      if (out[1]) out[1].set(R);
+      if (this.isRec){
+        let i=0, N=L.length;
+        while(i<N){
+          const space=this.chunk-this.pos;
+          const n=Math.min(space, N-i);
+          this.buffL.set(L.subarray(i,i+n), this.pos);
+          this.buffR.set(R.subarray(i,i+n), this.pos);
+          this.pos+=n; i+=n;
+          if (this.pos===this.chunk){
+            this.port.postMessage({type:'data', left:this.buffL.buffer, right:this.buffR.buffer}, [this.buffL.buffer, this.buffR.buffer]);
+            this.buffL=new Float32Array(this.chunk);
+            this.buffR=new Float32Array(this.chunk);
+            this.pos=0;
+          }
+        }
+      }
+      return true;
+    }
+  }
+  registerProcessor('recorder-processor', RecorderProcessor);`;
+
+  const blob1 = URL.createObjectURL(new Blob([scratchWorklet], {type:'application/javascript'}));
+  const blob2 = URL.createObjectURL(new Blob([recorderWorklet], {type:'application/javascript'}));
+  await ctx.audioWorklet.addModule(blob1);
+  await ctx.audioWorklet.addModule(blob2);
+
+  /* -------------------- Utilities -------------------- */
+  const q = s=>document.querySelector(s);
+  const fmt = sec=>{ if(!isFinite(sec)) return '--:--'; sec=Math.max(0,sec|0); const m=(sec/60)|0, s=sec%60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+
+  /* -------------------- Master + XFader (rec tap inline) -------------------- */
+  const master = ctx.createGain(); master.gain.value=1;
+  const busA = ctx.createGain(), busB = ctx.createGain();
+  const mixA = ctx.createGain(), mixB = ctx.createGain();
+  busA.connect(mixA); busB.connect(mixB);
+
+  // sum → recorder → master → destination
+  const sum = ctx.createGain();
+  mixA.connect(sum); mixB.connect(sum);
+  const recNode = new AudioWorkletNode(ctx,'recorder-processor',{numberOfInputs:1, numberOfOutputs:1, outputChannelCount:[2]});
+  sum.connect(recNode);
+  recNode.connect(master);
+  master.connect(ctx.destination);
+
+  const xf=q('#xfader'), ham=q('#ham'), xcurve=q('#xcurve');
+  function setXF(){
+    const x=parseFloat(xf.value), dir=ham.checked?-1:1;
+    const shaped = Math.sign(x*dir)*Math.pow(Math.abs(x*dir), 1+9*parseFloat(xcurve.value));
+    const theta=(shaped+1)*Math.PI/4;
+    mixA.gain.setValueAtTime(Math.cos(theta), ctx.currentTime);
+    mixB.gain.setValueAtTime(Math.sin(theta), ctx.currentTime);
+  }
+  xf.addEventListener('input', setXF); xcurve.addEventListener('input', setXF); ham.addEventListener('change', setXF); setXF();
+
+  /* -------------------- Transform gate -------------------- */
+  const tapCut=q('#tapCut'); let cutHeld=false;
+  function applyGate(nodes){ const g=cutHeld?0:1; for(const n of nodes) n.node.parameters.get('gate').setValueAtTime(g, ctx.currentTime); }
+
+  /* -------------------- Crackle buffer -------------------- */
+  const crackleBuf = (()=>{ const dur=5, n=ctx.sampleRate*dur; const b=ctx.createBuffer(1,n,ctx.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<n;i++){ if(Math.random()<0.005) d[i]=(Math.random()*2-1)*0.9; } return b; })();
+
+  /* -------------------- Deck Factory (rate-based smooth scratch) -------------------- */
+  function createDeck(prefix, bus){
+    const ui = {
+      file:q('#file'+prefix), play:q('#play'+prefix), cue:q('#cue'+prefix), brakeBtn:q('#brake'+prefix),
+      time:q('#time'+prefix), vol:q('#vol'+prefix), rate:q('#rate'+prefix),
+      sens:q('#sens'+prefix), iner:q('#iner'+prefix), spin:q('#spin'+prefix), brake:q('#brakeTime'+prefix),
+      eq:q('#eq'+prefix), lpf:q('#lpf'+prefix), crackle:q('#crackle'+prefix),
+      wheel:q('#wheel'+prefix), meter:q('#meter'+prefix)
+    };
+
+    const node=new AudioWorkletNode(ctx,'scratch-processor',{numberOfOutputs:1, outputChannelCount:[2]});
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=ui.eq.checked?800:20; hp.Q.value=0.707;
+    const lpf=ctx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=parseFloat(ui.lpf.value); lpf.Q.value=0.707;
+    const gain=ctx.createGain(); gain.gain.value=parseFloat(ui.vol.value);
+    const analyser=ctx.createAnalyser(); analyser.fftSize=1024;
+    node.connect(hp); hp.connect(lpf); lpf.connect(gain); gain.connect(analyser); gain.connect(bus);
+
+    const crackle=ctx.createBufferSource(); crackle.buffer=crackleBuf; crackle.loop=true;
+    const crackleGain=ctx.createGain(); crackleGain.gain.value=0;
+    crackle.connect(crackleGain).connect(bus); crackle.start();
+
+    // State
+    let info={duration:NaN, sampleRate:ctx.sampleRate, rateScale:1};
+    let playing=false, baseRate=parseFloat(ui.rate.value);
+    let isScratching=false, lastX=0, lastT=0, velocity=0;
+    let lastHeadSec=0;
+
+    // UI bindings
+    ui.eq.addEventListener('change', ()=> hp.frequency.value=ui.eq.checked?800:20);
+    ui.lpf.addEventListener('input', ()=> lpf.frequency.value=parseFloat(ui.lpf.value));
+    ui.vol.addEventListener('input', ()=> gain.gain.value=parseFloat(ui.vol.value));
+    ui.crackle.addEventListener('change', ()=> crackleGain.gain.value = ui.crackle.checked ? 0.06 : 0);
+    ui.rate.addEventListener('input', ()=>{
+      baseRate=parseFloat(ui.rate.value);
+      if(!isScratching){ node.parameters.get('rate').setTargetAtTime(playing ? baseRate*info.rateScale : 0, ctx.currentTime, 0.01); }
+    });
+
+    // File loader (transferable stereo)
+    ui.file.addEventListener('change', async (e)=>{
+      const f=e.target.files?.[0]; if(!f) return;
+      const arr=await f.arrayBuffer(); const abuf=await ctx.decodeAudioData(arr);
+      info.duration=abuf.duration; info.sampleRate=abuf.sampleRate; info.rateScale = abuf.sampleRate/ctx.sampleRate;
+      const ch0=abuf.getChannelData(0), L=new Float32Array(ch0.length); L.set(ch0);
+      let R;
+      if(abuf.numberOfChannels>1){ const ch1=abuf.getChannelData(1); R=new Float32Array(ch1.length); R.set(ch1); }
+      else { R=new Float32Array(ch0.length); R.set(ch0); }
+      node.port.postMessage({type:'setBuffer', channels:[L.buffer,R.buffer], length:L.length, sampleRate:abuf.sampleRate}, [L.buffer,R.buffer]);
+      lastHeadSec=0; ui.time.textContent=`${fmt(0)} / ${fmt(info.duration)}`;
+    });
+
+    // Play / Pause with spin-up
+    ui.play.addEventListener('click', async ()=>{
+      if(ctx.state!=='running') await ctx.resume();
+      const p=node.parameters.get('rate'); const now=ctx.currentTime;
+      if(!playing){
+        playing=true;
+        const spin=parseFloat(ui.spin.value);
+        p.cancelScheduledValues(now);
+        p.setValueAtTime(0, now);
+        p.linearRampToValueAtTime(baseRate*info.rateScale, now + Math.max(0,spin));
+      } else {
+        playing=false;
+        p.setValueAtTime(0, now);
+      }
+    });
+
+    // Cue
+    ui.cue.addEventListener('click', ()=>{
+      playing=false;
+      node.parameters.get('rate').setValueAtTime(0, ctx.currentTime);
+      node.port.postMessage({type:'setHead', head:0});
+      lastHeadSec=0; ui.time.textContent=`${fmt(0)} / ${fmt(info.duration)}`;
+    });
+
+    // Brake
+    ui.brakeBtn.addEventListener('click', ()=>{
+      if(!playing) return;
+      const p=node.parameters.get('rate'); const now=ctx.currentTime; const t=parseFloat(ui.brake.value);
+      p.cancelScheduledValues(now);
+      p.setValueAtTime(baseRate*info.rateScale, now);
+      p.linearRampToValueAtTime(0, now+Math.max(0.05,t));
+      setTimeout(()=>{playing=false;}, Math.max(50, t*1000));
+    });
+
+    // Smooth rate-based scratch
+    function sens(){ return parseFloat(ui.sens.value); }
+    function iner(){ return parseFloat(ui.iner.value); }
+    const pRate = node.parameters.get('rate');
+
+    function scratchStart(x){ if(!isFinite(info.duration)) return; isScratching=true; lastX=x; lastT=performance.now(); velocity=0; pRate.setValueAtTime(0, ctx.currentTime); }
+    function scratchMove(x){
+      if(!isScratching) return;
+      const now=performance.now(); const dx=x-lastX; const dt=Math.max(1/1000,(now-lastT)/1000);
+      lastX=x; lastT=now;
+      const secPerSec = dx * sens();
+      velocity = secPerSec;
+      const targetRate = Math.max(-12, Math.min(12, secPerSec * info.rateScale));
+      pRate.setTargetAtTime(targetRate, ctx.currentTime, 0.01);
+    }
+    function scratchEnd(){
+      if(!isScratching) return; isScratching=false;
+      const now=ctx.currentTime; const motor = baseRate*info.rateScale;
+      const tc = Math.max(0.02, iner()*0.5);
+      pRate.cancelScheduledValues(now);
+      pRate.setValueAtTime(pRate.value, now);
+      pRate.setTargetAtTime(motor, now, tc);
+    }
+
+    // Wheel events
+    function mdown(e){ if(ctx.state!=='running') ctx.resume(); scratchStart(e.clientX); }
+    function mmove(e){ if(isScratching) scratchMove(e.clientX); }
+    function mup(){ scratchEnd(); }
+    ui.wheel.addEventListener('mousedown', mdown);
+    window.addEventListener('mousemove', mmove);
+    window.addEventListener('mouseup', mup);
+    ui.wheel.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; scratchStart(t.clientX); }, {passive:true});
+    window.addEventListener('touchmove', e=>{ if(!isScratching) return; const t=e.changedTouches[0]; scratchMove(t.clientX); }, {passive:true});
+    window.addEventListener('touchend', mup);
+
+    // Head → time
+    node.port.onmessage = (e)=>{
+      const d=e.data||{}; if(d.type==='head'){ const sec = d.head / (d.sampleRate || info.sampleRate || ctx.sampleRate); lastHeadSec=sec; if(!isScratching) ui.time.textContent = `${fmt(sec)} / ${fmt(info.duration)}`; }
+    };
+
+    // Meter
+    const tmp = new Uint8Array(analyser.fftSize);
+    (function meterLoop(){
+      analyser.getByteTimeDomainData(tmp);
+      let sum=0; for(let i=0;i<tmp.length;i++){ const v=(tmp[i]-128)/128; sum+=v*v; }
+      const rms = Math.sqrt(sum/tmp.length);
+      ui.meter.style.width = Math.min(100, rms*150).toFixed(1)+'%';
+      requestAnimationFrame(meterLoop);
+    })();
+
+    return {node};
+  }
+
+  // Build decks + transform controls
+  const deckA=createDeck('A', busA);
+  const deckB=createDeck('B', busB);
+  tapCut.addEventListener('mousedown', ()=>{ cutHeld=true; applyGate([deckA,deckB]); });
+  tapCut.addEventListener('mouseup',   ()=>{ cutHeld=false; applyGate([deckA,deckB]); });
+  window.addEventListener('keydown', e=>{ if(e.key==='c'||e.key==='C'){ cutHeld=true; applyGate([deckA,deckB]); }});
+  window.addEventListener('keyup',   e=>{ if(e.key==='c'||e.key==='C'){ cutHeld=false; applyGate([deckA,deckB]); }});
+
+  /* -------------------- Recording toggle -------------------- */
+  const recBtn=q('#recBtn'), recBtnText=q('#recBtnText'), dlBtn=q('#dlBtn'), recStatus=q('#recStatus');
+  let recording=false, wavURL=null;
+  let chunksL=[], chunksR=[], totalSamples=0;
+
+  function resetRecording(){
+    chunksL=[]; chunksR=[]; totalSamples=0;
+    if (wavURL){ URL.revokeObjectURL(wavURL); wavURL=null; }
+    dlBtn.disabled=true; recStatus.textContent='idle';
+  }
+
+  function uiRecOn(on){
+    recording=on;
+    recBtn.classList.toggle('rec-on', on);
+    recBtnText.textContent = on ? 'Stop' : 'Record';
+  }
+
+  recNode.port.onmessage = (e)=>{
+    const d=e.data||{};
+    if (d.type==='data'){
+      const L = new Float32Array(d.left), R = new Float32Array(d.right);
+      const valid = (typeof d.valid==='number') ? d.valid : L.length;
+      chunksL.push(valid===L.length ? L : L.slice(0,valid));
+      chunksR.push(valid===R.length ? R : R.slice(0,valid));
+      totalSamples += valid;
+      recStatus.textContent = `REC… ${(totalSamples/ctx.sampleRate).toFixed(1)}s`;
+    } else if (d.type==='recStopped'){
+      const blob = buildWav(chunksL, chunksR, totalSamples, ctx.sampleRate);
+      wavURL = URL.createObjectURL(blob);
+      dlBtn.disabled=false;
+      recStatus.textContent = `ready: ${(totalSamples/ctx.sampleRate).toFixed(1)}s`;
+    }
+  };
+
+  recBtn.addEventListener('click', async ()=>{
+    if (ctx.state!=='running') await ctx.resume();
+    if (!recording){
+      resetRecording();
+      uiRecOn(true);
+      recNode.port.postMessage({type:'recStart'});
+    } else {
+      uiRecOn(false);
+      recStatus.textContent = 'finalizing…';
+      recNode.port.postMessage({type:'recStop'});
+    }
+  });
+
+  dlBtn.addEventListener('click', ()=>{
+    if (!wavURL) return;
+    const a=document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g,'-');
+    a.href = wavURL; a.download = `YouDJ-Bounce-${ts}.wav`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  function buildWav(Lchunks, Rchunks, nSamples, sampleRate){
+    const numChannels=2, bytesPerSample=2, dataLen=nSamples*numChannels*bytesPerSample;
+    const buffer=new ArrayBuffer(44+dataLen), view=new DataView(buffer);
+    writeStr(view,0,'RIFF'); view.setUint32(4,36+dataLen,true); writeStr(view,8,'WAVE');
+    writeStr(view,12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+    view.setUint16(22,numChannels,true); view.setUint32(24,sampleRate,true);
+    view.setUint32(28,sampleRate*numChannels*bytesPerSample,true);
+    view.setUint16(32,numChannels*bytesPerSample,true); view.setUint16(34,16,true);
+    writeStr(view,36,'data'); view.setUint32(40,dataLen,true);
+    let offset=44, chunk=0, pos=0, curL=Lchunks[0]||new Float32Array(0), curR=Rchunks[0]||new Float32Array(0);
+    for(let i=0;i<nSamples;i++){
+      if(pos>=curL.length){ chunk++; curL=Lchunks[chunk]||new Float32Array(0); curR=Rchunks[chunk]||new Float32Array(0); pos=0; }
+      const l=Math.max(-1,Math.min(1,curL[pos]||0)), r=Math.max(-1,Math.min(1,curR[pos]||0));
+      view.setInt16(offset,(l*0x7FFF)|0,true); offset+=2;
+      view.setInt16(offset,(r*0x7FFF)|0,true); offset+=2;
+      pos++;
+    }
+    return new Blob([view],{type:'audio/wav'});
+  }
+  function writeStr(view,off,str){ for(let i=0;i<str.length;i++) view.setUint8(off+i,str.charCodeAt(i)); }
+
+  /* -------------------- Keyboard QoL -------------------- */
+  let lastDeck='A';
+  ['fileA','rateA','volA','wheelA'].forEach(id=> q('#'+id).addEventListener('pointerdown', ()=> lastDeck='A'));
+  ['fileB','rateB','volB','wheelB'].forEach(id=> q('#'+id).addEventListener('pointerdown', ()=> lastDeck='B'));
+  window.addEventListener('keydown', async (e)=>{
+    if(e.code==='Space'){ e.preventDefault(); if(ctx.state!=='running') await ctx.resume(); q('#play'+lastDeck).click(); }
+  });
+
+})(); // IIFE
+</script>
+</body>
+</html>
